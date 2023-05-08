@@ -32,8 +32,13 @@ const isFileTypeSupported = (type, supportedTypes) => {
     return supportedTypes.includes(type);
 };
 
-const uploadFileToCloudinary = async (file, folder) => {
-    const options = { folder, resource_type: "auto" }
+const uploadFileToCloudinary = async (file, folder, quality) => {
+    const options = { folder, resource_type: "auto" };
+
+    if (quality) {
+        options.quality = quality;
+    };
+
     return await cloudinary.uploader.upload(file.tempFilePath, options)
 }
 
@@ -118,3 +123,46 @@ exports.videoUpload = async (req, res) => {
         })
     }
 };
+
+exports.imageReduceUpload = async (req, res) => {
+    try {
+        const { email, name, tags } = req.body;
+
+        const file = req.files.imageFile;
+
+        const supportedTypes = ["jpg", "jpeg", "png"];
+        const fileType = file.name.split(".")[1].toLowerCase();
+
+        // if file type is not supported
+        if (!isFileTypeSupported(fileType, supportedTypes)) {
+            return res.status(400).json({
+                success: false,
+                message: "File type not supported!"
+            })
+        }
+
+        // file type is supported
+        // Here we have passed quality for image
+        const response = await uploadFileToCloudinary(file, "Akshay Reduced", 30);
+        // console.log(response);
+
+        // save entry in database
+        await File.create({
+            name,
+            email,
+            tags,
+            fileUrl: response.secure_url
+        })
+
+        res.status(200).json({
+            success: true,
+            imageUrl: response.secure_url,
+            message: "Reduced sized image uploaded successfully!"
+        })
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: "Something went wrong: " + error.message
+        })
+    }
+}
