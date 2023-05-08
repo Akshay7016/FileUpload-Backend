@@ -33,7 +33,7 @@ const isFileTypeSupported = (type, supportedTypes) => {
 };
 
 const uploadFileToCloudinary = async (file, folder) => {
-    const options = { folder }
+    const options = { folder, resource_type: "auto" }
     return await cloudinary.uploader.upload(file.tempFilePath, options)
 }
 
@@ -78,4 +78,43 @@ exports.imageUpload = async (req, res) => {
             message: "Something went wrong: " + error.message
         })
     }
-} 
+};
+
+exports.videoUpload = async (req, res) => {
+    try {
+        const { name, email, tags } = req.body;
+
+        const file = req.files.videoFile;
+
+        const supportedTypes = ["mp4", "mov"];
+        const fileType = file.name.split(".")[1].toLowerCase();
+
+        if (!isFileTypeSupported(fileType, supportedTypes)) {
+            return res.status(400).json({
+                success: false,
+                message: "File type not supported!"
+            })
+        };
+
+        const response = await uploadFileToCloudinary(file, "Akshay Video");
+
+        // save data to database
+        await File.create({
+            name,
+            email,
+            tags,
+            fileUrl: response.secure_url
+        })
+
+        res.status(200).json({
+            success: true,
+            imageUrl: response.secure_url,
+            message: "Video uploaded successfully!"
+        })
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: "Something went wrong: " + error.message
+        })
+    }
+};
